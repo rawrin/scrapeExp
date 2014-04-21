@@ -19,6 +19,10 @@ var makeScrapeQueue = function () {
   size = 0;
   head = null;
   tail = null;
+
+  queue.size = function () {
+    return size;
+  }
   
   queue.queue = function (rssDoc) {
     var node = makeScrapeNode(rssDoc);
@@ -118,36 +122,35 @@ module.exports.makeScrapeQueue = makeScrapeQueue;
  */
 // // testing to see if queue works;
 
-t1 = {title: "hello", link: 'greg'};
-t2 = {title: 'world', link: 'lull'};
-t3 = {title: 'trees', link: 'halley'};
+var executeTest = function () {
+  t1 = {title: "hello", link: 'greg'};
+  t2 = {title: 'world', link: 'lull'};
+  t3 = {title: 'trees', link: 'halley'};
 
-var scrapeQueue = makeScrapeQueue();
+  var scrapeQueue = makeScrapeQueue();
 
-var r00 = scrapeQueue.dequeue() === null;
-var r01 = scrapeQueue.contains({title: 'hello' , link: 'greg'}) === false;
+  var r00 = scrapeQueue.dequeue() === null;
+  var r01 = scrapeQueue.contains({title: 'hello' , link: 'greg'}) === false;
 
-scrapeQueue.queue(t1);
-scrapeQueue.queue(t2);
+  scrapeQueue.queue(t1);
+  scrapeQueue.queue(t2);
 
-var r02 = scrapeQueue.dequeue().title === t1.title;
-var r03 = scrapeQueue.dequeue().link === t2.link;
-var r04 = scrapeQueue.dequeue() === null;
+  var r02 = scrapeQueue.dequeue().title === t1.title;
+  var r03 = scrapeQueue.dequeue().link === t2.link;
+  var r04 = scrapeQueue.dequeue() === null;
 
-scrapeQueue.queue(t1);
-scrapeQueue.queue(t2);
-scrapeQueue.queue(t3);
+  scrapeQueue.queue(t1);
+  scrapeQueue.queue(t2);
+  scrapeQueue.queue(t3);
 
-var r05 = scrapeQueue.contains(t1) === true;
-var r06 = scrapeQueue.contains(t2) === true;
-var r07 = scrapeQueue.contains(t3) === true;
+  var r05 = scrapeQueue.contains(t1) === true;
+  var r06 = scrapeQueue.contains(t2) === true;
+  var r07 = scrapeQueue.contains(t3) === true;
 
-var list = scrapeQueue.all();
+  var list = scrapeQueue.all();
 
-console.log(r00, r01, r02, r03, r04, r05, r06, r07);
-console.log('list: \n', list);
+  console.log(r00, r01, r02, r03, r04, r05, r06, r07);
+  console.log('list: \n', list);
+};
 
-
-// if ( rss is valid && !scrapeQueue.contains(rssObject)) {
-//   then scrapeQueue.add(rss object)
-// }
+// executeTest();

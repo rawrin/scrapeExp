@@ -43,12 +43,12 @@ var scrapeQueue = rssQ.makeScrapeQueue();
 
 var readabilityRequestCron = function (time, master) {
   master = master || masterRssList;
-  var time = time || '*/5 * * * * *';
+  var time = time || '*/15 * * * * *';
   new CronJob(time, function(){
-  console.log('You will see this message every 5 sec');
+  console.log('You will see this message every 15 sec');
 
-  // 
-  populateMasterRssQueue();
+  // populates the master rss queue which is independent of querying readability
+  populateMasterRssQueue(rssURL, 3);
 
   // 
   queryReadability();
@@ -57,7 +57,7 @@ var readabilityRequestCron = function (time, master) {
 };
 
 // populates rss master list upon successful rss read
-var populateMasterRssQueue = function (url) {
+var populateMasterRssQueue = function (url, limit) {
   url = url || rssURL;
 
   rssReader(url).then(function(rssResults){
@@ -66,10 +66,12 @@ var populateMasterRssQueue = function (url) {
 
     var addedNew = false;
 
+    var len = limit ? limit : rssResults.length
+
     // check each item from the rss result and add to the queue IF
     //   1. it's not contained in scrapeQueue
     //   2. it's not in the mongoDB TODO (add inside the if statement)
-    for (var i = 0; i < rssResults.length; i++) {
+    for (var i = 0; i < len; i++) {
       var rssObj = rssResults[i];
       if (isRssDocValid(rssObj) && !scrapeQueue.contains(rssObj)) {
         var add = scrapeQueue.queue(rssObj);
@@ -77,19 +79,10 @@ var populateMasterRssQueue = function (url) {
         addedNew = true;
       }
     }
-
+    // for testing purposes
     if (addedNew) {
       console.log('\ncurrent rss list: \n', scrapeQueue.all());
     }
-    // // if a rss doc is not in the masterRss list, then add it
-    // for (var i = 0; i < rssResults.length; i++) {
-    //   var item = rssResults[i];
-    //   if (!isInRssMaster(item)) {
-    //     addToMaster(item);
-    //     console.log('added to rss master: ', item.title);
-    //     addedNew = true;
-    //   }
-    // }
   })
   .catch(function(err){
     console.log('rssReader did not read rss: ', err);
@@ -97,25 +90,59 @@ var populateMasterRssQueue = function (url) {
 };
 
 // calls readability function which queries the readability api and returns a parsed object to be passed to wordTableMaker
-//   return wordTableMaker(doc);
+/*
+TODO PLAN
+  IF queryReadability is successful
+    - Update mongoDB
+    - IF mongoDB update is successful
+      0. create a wordTable and save as .json
+      1. update mongoMaster
+      2. remove from Queue
+*/
 
-var queryReadability = function (doc, master) {
-  master = master || masterRssList;
-  var masterLength
-  if (master.length > 0) {
-    var doc = master[master.length-1];
+var queryReadability = function (doc) {
 
-    console.log('\n readability doc: \n', doc.title, ' ', doc.link);
+  if (scrapeQueue.size() > 0) {
+    firstInQueue = scrapeQueue.all()[0];
 
-    readableQuery(doc.link)
-    .then(function (doc) {
-      console.log('readableQuery worked: ', doc.title);
-      master.pop();
-    })
-    .catch(function(err){
-      console.log('cron rss query did not work');
-    });
+    if (isRssDocValid(firstInQueue)) {
+      readableQuery(firstInQueue.link)
+      .then(function (doc) {
+        console.log('readableQuery worked: ', doc.title);
+
+        wordTableMaker(doc)
+        .then(function (wordtable) {
+          console.log('wordtable made: ', wordtable.title);
+          var d = scrapeQueue.dequeue();
+          console.log('dequeued      : ', d.title);
+
+        })
+        .catch(function (err) {
+          console.log('error in wordtable: ', err);
+        });
+      })
+      .catch(function(err){
+        console.log('cron rss query did not work');
+      });
+    }
+
   }
+
+
+  // if (master.length > 0) {
+  //   var doc = master[master.length-1];
+
+  //   console.log('\n readability doc: \n', doc.title, ' ', doc.link);
+
+  //   readableQuery(doc.link)
+  //   .then(function (doc) {
+  //     console.log('readableQuery worked: ', doc.title);
+  //     master.pop();
+  //   })
+  //   .catch(function(err){
+  //     console.log('cron rss query did not work');
+  //   });
+  // }
 };
 
 /***
@@ -129,7 +156,7 @@ var queryReadability = function (doc, master) {
  *                      |_|                
  */
 
-// converts rss query results to an array of rss titles
+// returns an array of rss objects converted to an array of rss titles
 var toRssResultTitles = function (master) {
   master = master || masterRssList;
   var titles = [];
