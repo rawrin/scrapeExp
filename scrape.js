@@ -22,7 +22,7 @@ var readabilityRequestCron = function (time, master) {
     for (var i = 0; i < rssResults.length; i++) {
       masterRssList.push(rssResults[i]);
     }
-    console.log('current rss list: ', masterRssList);
+    console.log('\ncurrent rss list: \n', masterRssList);
   }).catch(function(err){
     console.log('errored: ', err);
   });
@@ -30,7 +30,7 @@ var readabilityRequestCron = function (time, master) {
   // calls readability function once a minute
   if (masterRssList.length > 0) {
     var doc = masterRssList[masterRssList.length-1];
-    var ('\n readability doc: \n', doc.title, ' ', doc.url);
+    console.log('\n readability doc: \n', doc.title, ' ', doc.url);
     readableQuery(doc.url)
     .then(function () {
       masterRssList.pop();
