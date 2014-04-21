@@ -50,6 +50,8 @@ var siteSchema = new Schema({
   file: String
 });
 
+var Site = mongoose.model('Site', siteSchema);
+
 // master lists
 var masterRssList = {};
 var scrapeQueue = rssQ.makeScrapeQueue();
@@ -76,7 +78,7 @@ var readabilityRequestCron = function (time, master) {
     Add to scrape queue IF
      not in scrapeQueue AND not in mongoMaster
   */
-  populateMasterRssQueue(rssURL, 3);
+  populateMasterRssQueue(rssURL);
 
   
   /*
@@ -110,6 +112,7 @@ var populateMasterRssQueue = function (url, limit) {
       var rssObj = rssResults[i];
       if (isRssDocValid(rssObj) && !scrapeQueue.contains(rssObj)) {
         mongoCheck(rssObj).then(function (isInMongo) {
+          console.log('inside rss queue isInMongo: ', isInMongo, rssObj.title);
           if (!isInMongo) {
             var add = scrapeQueue.queue(rssObj);
             console.log('added to scrapeQueue: ', add);
@@ -150,32 +153,18 @@ var queryReadability = function (doc) {
       .then(function (doc) {
         console.log('readableQuery worked: ', doc.title);
 
-        // save
-
-        // TODO everything below should be INSIDE the mongoDB save above
-        wordTableMaker(doc)
-        .then(function (wordtable) {
-          console.log('wordtable made: ', wordtable.title);
-
-          myFs.saveAsJson(wordtable)
-          .then(function(item){
-            console.log('save successful');
-            var d = scrapeQueue.dequeue();
-            console.log('dequeued      : ', d.title);
-          })
-          .catch(function (err) {
-            console.log('save as json did not work: ', err);
-          });
-
-
-
+        myFs.saveAsJson(doc)
+        .then(function(item){
+          console.log('save as Json successful');
+          var d = scrapeQueue.dequeue();
+          console.log('dequeued      : ', d.title);
         })
         .catch(function (err) {
-          console.log('error in wordtable: ', err);
+          console.log('save as json did not work: ', err);
         });
       })
       .catch(function(err){
-        console.log('cron rss query did not work');
+        console.log('reability did not work');
       });
     }
   }
@@ -301,11 +290,22 @@ var readableQuery = function(url) {
     request(rURL, function(error, response, html) {
       if(!error && response.statusCode === 200) {
         readable = JSON.parse(html);
-        saveToMongo(readable).then(function() {
-          doc.title = readable.title;
-          doc.url = readable.url;
-          doc.content = readable.content;
-          resolve(doc);
+        mongoCheck(readable).then(function (isInMongo) {
+          if (!isInMongo) {
+            saveToMongo(readable)
+            .then(function() {
+              doc.title = readable.title;
+              doc.url = readable.url;
+              doc.content = readable.content;
+              console.log('saved to mongo: ', doc.title);
+              wordTableMaker(doc)
+              .then(function(docWithWordTable) {
+                return resolve(docWithWordTable);
+              })
+            });
+          }
+        }).catch(function (err) {
+          console.log('mongo check error: ', err);
         });
       } else {
         reject(error);
@@ -356,18 +356,22 @@ var wordTableMaker = function(doc) {
 };
 
 var mongoCheck = function(rssObj) {
-  var url = rssObj.link;
-  var title = rssObj.title;
 
   return new Promise(function(resolve, reject) {
-    var mongoQuery = { url: url, title: title };
-    Site.find(mongoqQuery).exec(function(error, result) {
+    var url = (rssObj.url !== undefined )? rssObj.url : rssObj.link;
+    var title = rssObj.title;
+
+    var mongoQuery = { title: title };
+    Site.find(mongoQuery).exec(function(error, result) {
+      console.log('mongoose results: ' ,result);
       if (error) {
         reject(error);
       }
       if (result.length === 0) {
+        console.log('not in mongo: ', mongoQuery);
         resolve(false);
       } else {
+        console.log('is in mongo: ', mongoQuery);
         resolve(true);
       }
     });
