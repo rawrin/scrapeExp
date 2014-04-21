@@ -3,7 +3,32 @@ var FeedParser = require('feedparser');
 var request = require('request');
 var Promise = require('bluebird');
 var Sanitizer = require('sanitizer');
+var mongoose = require('mongoose');
 
+var Schema = mongoose.Schema;
+var db = mongoose.connection;
+var mongoURL = process.env.MONGO || "mongodb://localhost/db";
+
+mongoose.connect(mongoURL);
+
+var siteSchema = new Schema({
+  content: String,
+  domain: String,
+  author: String,
+  url: String,
+  short_url: String,
+  title: String,
+  excerpt: String,
+  direction: String,
+  word_count: Number,
+  total_pages: Number,
+  date_published: Date,
+  dek: String,
+  lead_image_url: String,
+  next_page_id: Number,
+  rendered_pages: Number,
+  file: String
+});
 
 var rssReader = function(url) {
   return new Promise(function(resolve, reject){
@@ -43,18 +68,19 @@ var readableQuery = function(url) {
     request(rURL, function(error, response, html) {
       if(!error && response.statusCode === 200) {
         readable = JSON.parse(html);
-        // saveToMongo(readable).then(function() {
+        saveToMongo(readable).then(function() {
           doc.title = readable.title;
           doc.url = readable.url;
           doc.content = readable.content;
           resolve(doc);
-        // });
+        });
       } else {
         reject(error);
       }
     });
   });
 };
+
 
 var saveToMongo = function(obj) {
   return new Promise (function(resolve, reject) {
@@ -96,6 +122,21 @@ var wordTableMaker = function(doc) {
   });
 };
 
+var mongoCheck = function(url, title) {
+  return new Promise(function(resolve, reject) {
+    var mongoQuery = { url: url, title: title };
+    Site.find(mongoqQuery).exec(function(error, result) {
+      if (error) {
+        reject(error);
+      }
+      if (result.length === 0) {
+        resolve(false);
+      } else {
+        resolve(true);
+      }
+    });
+  });
+};
 rssReader("https://news.ycombinator.com/rss");
 // .then(function(rss){console.log(rss);});
 
