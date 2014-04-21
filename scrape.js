@@ -4,6 +4,7 @@ var request = require('request');
 var Promise = require('bluebird');
 var Sanitizer = require('sanitizer');
 var cheerio = require('cheerio');
+var CronJob = require('cron').CronJob;
 
 var req = request('https://news.ycombinator.com/rss');
 // var feedparser = new FeedParser();
@@ -18,6 +19,27 @@ var req = request('https://news.ycombinator.com/rss');
 
 //   stream.pipe(feedparser);
 // });
+
+masterRssList = [];
+
+var readabilityRequestCron = function (time) {
+  var time = time || '00 1 * * * *';
+  new CronJob(time, function(){
+  console.log('You will see this message every minute');
+  
+  if (masterRssList.length > 0) {
+    var doc = masterRssList.pop();
+    readableQuery(doc.url)
+    .then(function () {
+      masterRssList.pop();
+    })
+    .catch(function(err){
+      console.log('cron rss query did not work');
+    });
+  }
+
+  }, null, true, "America/Los_Angeles");
+};
 
 
 // feedparser.on('error', function(error) {
@@ -99,11 +121,11 @@ var wordCountMaker = function(doc) {
   });
 };
 
-readableQuery("http://www.forbes.com/sites/alexknapp/2014/04/20/spacex-dragon-successfully-docked-with-the-space-station/")
-.then(function(doc) {
-  return wordTableMaker(doc);
-})
-.then(function(doc){
-  console.log(doc);
-});
+// readableQuery("http://www.forbes.com/sites/alexknapp/2014/04/20/spacex-dragon-successfully-docked-with-the-space-station/")
+// .then(function(doc) {
+//   return wordTableMaker(doc);
+// })
+// .then(function(doc){
+//   console.log(doc);
+// });
 
