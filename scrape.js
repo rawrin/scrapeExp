@@ -118,7 +118,7 @@ var wordTableMaker = function(doc) {
     var words = doc.content.split(" ");
     for (var j = 0; j < words.length; j++) {
       word = words[j];
-      words[j] = word.replace(/[\n\t]/g, '');
+      words[j] = word.replace(/[\n\t]/g, '').toLowerCase();
     }
     // console.log(words);
     for (var i = 0; i < words.length; i++) {
