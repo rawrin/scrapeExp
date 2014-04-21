@@ -5,34 +5,37 @@ var Promise = require('bluebird');
 var Sanitizer = require('sanitizer');
 var cheerio = require('cheerio');
 
-var req = request('https://news.ycombinator.com/rss');
-// var feedparser = new FeedParser();
 
-// req.on('error', function (error) {
-//   // handle any request errors
-// });
-// req.on('response', function (res) {
-//   var stream = this;
+var rssReader = function(url) {
+  return new Promise(function(resolve, reject){
+    var req = request();
+    var rssResult = [];
+    var feedparser = new FeedParser();
+    req.on('error', function (error) {
+      reject(error);
+    });
+    req.on('response', function (res) {
+      var stream = this;
+      if (res.statusCode != 200) return this.emit('error', new Error('Bad status code'));
+      stream.pipe(feedparser);
+    });
 
-//   if (res.statusCode != 200) return this.emit('error', new Error('Bad status code'));
+    feedparser.on('error', function(error) {
+      reject(error);
+    });
+    feedparser.on('readable', function() {
+      var stream = this;
+      var meta = this.meta;
+      var item;
 
-//   stream.pipe(feedparser);
-// });
+      while (item = stream.read()) {
+        rssResult.push(item);
+      }
+      resolve(rssResult);
+    });
+  });
+};
 
-
-// feedparser.on('error', function(error) {
-//   // always handle errors
-// });
-// feedparser.on('readable', function() {
-//   // This is where the action is!
-//   var stream = this;
-//   var meta = this.meta; // **NOTE** the "meta" is always available in the context of the feedparser instance
-//   var item;
-
-//   while (item = stream.read()) {
-//     console.log(item);
-//   }
-// });
 var readableQuery = function(url) {
   var doc = {};
   var apiKey = process.env.API || '9695482fe1197a0ba40b18c71190d2669b7d903a';
@@ -94,6 +97,7 @@ var wordTableMaker = function(doc) {
   });
 };
 
+rssReader("https://news.ycombinator.com/rss").then(function(rss){console.log(rss);});
 
 readableQuery("http://www.forbes.com/sites/alexknapp/2014/04/20/spacex-dragon-successfully-docked-with-the-space-station/")
 .then(function(doc) {
