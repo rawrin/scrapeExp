@@ -29,6 +29,7 @@ var siteSchema = new Schema({
   rendered_pages: Number,
   file: String
 });
+var Site = mongoose.model('Site', siteSchema);
 
 var rssReader = function(url) {
   return new Promise(function(resolve, reject){
@@ -68,15 +69,22 @@ var readableQuery = function(url) {
     request(rURL, function(error, response, html) {
       if(!error && response.statusCode === 200) {
         readable = JSON.parse(html);
-        // saveToMongo(readable).then(function() {
-          doc.title = readable.title;
-          doc.url = readable.url;
-          doc.content = readable.content;
-          wordTableMaker(doc)
-          .then(function(docWithWordTable) {
-            return resolve(docWithWordTable);
-          });
-        // });
+        mongoCheck(readable)
+        .then(function(isInMongo){
+          console.log(isInMongo);
+          if (!isInMongo) {
+            console.log("I should not see this");
+            saveToMongo(readable).then(function() {
+              doc.title = readable.title;
+              doc.url = readable.url;
+              doc.content = readable.content;
+              wordTableMaker(doc)
+              .then(function(docWithWordTable) {
+                return resolve(docWithWordTable);
+              });
+            });
+          }
+        });
       } else {
         reject(error);
       }
@@ -125,10 +133,12 @@ var wordTableMaker = function(doc) {
   });
 };
 
-var mongoCheck = function(url, title) {
+var mongoCheck = function(obj) {
+  var url = obj.url !== undefined ? obj.url : obj.link;
+  var title = obj.title;
   return new Promise(function(resolve, reject) {
     var mongoQuery = { url: url, title: title };
-    Site.find(mongoqQuery).exec(function(error, result) {
+    Site.find(mongoQuery).exec(function(error, result) {
       if (error) {
         reject(error);
       }
