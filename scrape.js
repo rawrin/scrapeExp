@@ -68,12 +68,15 @@ var readableQuery = function(url) {
     request(rURL, function(error, response, html) {
       if(!error && response.statusCode === 200) {
         readable = JSON.parse(html);
-        saveToMongo(readable).then(function() {
+        // saveToMongo(readable).then(function() {
           doc.title = readable.title;
           doc.url = readable.url;
           doc.content = readable.content;
-          resolve(doc);
-        });
+          wordTableMaker(doc)
+          .then(function(docWithWordTable) {
+            return resolve(docWithWordTable);
+          });
+        // });
       } else {
         reject(error);
       }
@@ -141,9 +144,6 @@ rssReader("https://news.ycombinator.com/rss");
 // .then(function(rss){console.log(rss);});
 
 readableQuery("http://www.forbes.com/sites/jamesconca/2014/04/20/its-final-corn-ethanol-is-of-no-use/?fb_action_ids=277355565775300&fb_action_types=news.publishes/")
-.then(function(doc) {
-  return wordTableMaker(doc);
-})
 .then(function(doc){
   console.log(doc);
 });
