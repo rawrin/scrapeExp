@@ -7,41 +7,133 @@ var cheerio = require('cheerio');
 var CronJob = require('cron').CronJob;
 
 
-masterRssList = [];
+masterRssList = {};
 var rssURL = "https://news.ycombinator.com/rss";
 
+// readability cron job
 var readabilityRequestCron = function (time, master) {
   master = master || masterRssList;
-  var time = time || '*/30 * * * * *';
+  var time = time || '*/5 * * * * *';
   new CronJob(time, function(){
-  console.log('You will see this message every 30 sec');
+  console.log('You will see this message every 5 sec');
 
-  // populates rss master list upon successful rss read
+  // 
+  populateMasterRss();
+
+  // 
+  queryReadability();
+
+  }, null, true, "America/Los_Angeles");
+};
+
+// converts rss query results to an array of rss titles
+var toRssResultTitles = function (master) {
+  master = master || masterRssList;
+  var titles = [];
+  for (var i = 0; i < master.length; i++) {
+    titles.push(master[i].title);
+  }
+  return titles;
+};
+
+// checks if the rss document is in the rss master
+var isInRssMaster = function (doc, master) {
+  if (!isRssDocValid(doc)) {
+    console.log('doc itself, or title, or link is undefined: ', doc.title);
+    return false;
+  }
+  master = master || masterRssList;
+  if (master[doc.title] !== undefined) {
+    return true;
+  }
+  return false;
+};
+
+var isRssDocValid = function (doc) {
+  if (!doc) { throw "no doc inserted"}
+  if (typeof doc.title !== 'string' && typeof doc.link !== 'string') {
+    return false;
+  } 
+  return true;
+};
+
+// 
+var addToMaster = function (doc) {
+  if (!doc) { throw "addToMaster input is undefined"}
+  // only adds to master Rss list if it's not in the master rss list
+  if (isRssDocValid(doc) && master[doc.title] === undefined) {
+    master[doc.title] = {};
+    master[doc.title].link = doc.link;
+    master[doc.title].title = doc.title;
+
+    return master[doc.title];
+  } else {
+    console.log('rss doc is repeat and not added: ', doc.title);
+    return false;
+  }
+};
+
+// returns an array of titles from the master rss list
+var currentMasterRss = function (master) {
+  master = master || masterRssList;
+  var results = [];
+  for (var item in master) {
+    results.push(item.title);
+  }
+  return results;
+};
+
+// populates rss master list upon successful rss read
+var populateMasterRss = function () {
+
   rssReader(rssURL).then(function(rssResults){
-    console.log('new rss files: ', rssResults);
+
+    console.log('rss scrape results: ', toRssResultTitles(rssResults));
+
+    var addedNew = false;
+
+    // if a rss doc is not in the masterRss list, then add it
     for (var i = 0; i < rssResults.length; i++) {
-      masterRssList.push(rssResults[i]);
+      var item = rssResults[i];
+      if (!isInRssMaster(item)) {
+        addToMaster(item);
+        console.log('added to rss master: ', item.title);
+        addedNew = true;
+      }
     }
-    console.log('\ncurrent rss list: \n', masterRssList);
-  }).catch(function(err){
-    console.log('errored: ', err);
+    if (addedNew) {
+      console.log('\ncurrent rss list: \n', currentMasterRss());
+    }
+  })
+  .catch(function(err){
+    console.log('rssReader did not read rss: ', err);
   });
-  
-  // calls readability function once a minute
-  if (masterRssList.length > 0) {
-    var doc = masterRssList[masterRssList.length-1];
-    console.log('\n readability doc: \n', doc.title, ' ', doc.url);
-    readableQuery(doc.url)
-    .then(function () {
-      masterRssList.pop();
+};
+
+
+// calls readability function which queries the readability api and returns a parsed object to be passed to wordTableMaker
+//   return wordTableMaker(doc);
+
+var queryReadability = function (doc, master) {
+  master = master || masterRssList;
+  var masterLength
+  if (master.length > 0) {
+    var doc = master[master.length-1];
+
+    console.log('\n readability doc: \n', doc.title, ' ', doc.link);
+
+    readableQuery(doc.link)
+    .then(function (doc) {
+      console.log('readableQuery worked: ', doc.title);
+      master.pop();
     })
     .catch(function(err){
       console.log('cron rss query did not work');
     });
   }
-
-  }, null, true, "America/Los_Angeles");
 };
+
+// helper functions
 
 var rssReader = function(url) {
   return new Promise(function(resolve, reject){
@@ -53,7 +145,7 @@ var rssReader = function(url) {
     });
     req.on('response', function (res) {
       var stream = this;
-      if (res.statusCode != 200) return this.emit('error', new Error('Bad status code'));
+      if (res.statusCode !== 200) return this.emit('error', new Error('Bad status code'));
       stream.pipe(feedparser);
     });
 
