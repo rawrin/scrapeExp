@@ -89,15 +89,11 @@ var wordTableMaker = function(doc) {
         result.wordtable[words[i]] += 1;
       }
     }
+    result.wordunique = Object.keys(result.wordtable).length;
     resolve(result);
   });
 };
 
-var wordCountMaker = function(doc) {
-  return new Promise(function(resolve, reject) {
-
-  });
-};
 
 readableQuery("http://www.forbes.com/sites/alexknapp/2014/04/20/spacex-dragon-successfully-docked-with-the-space-station/")
 .then(function(doc) {
