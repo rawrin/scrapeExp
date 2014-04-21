@@ -1,9 +1,8 @@
-var common = { the:null,be:null,to:null,of:null,and:null,a:null,in:null,that:null,have:null,I:null,it:null,for:null,not:null,on:null,with:null,he:null,as:null,you:null,do:null,at:null,Word:null,this:null,but:null,his:null,by:null,from:null,they:null,we:null,say:null,her:null,she:null,or:null,an:null,will:null,my:null,one:null,all:null,would:null,there:null,their:null,what:null,so:null,up:null,out:null,if:null,about:null,who:null,get:null,which:null,go:null,me:null,when:null,make:null,can:null,like:null,time:null,no:null,just:null,him:null,know:null,take:null,people:null,into:null,year:null,your:null,good:null,some:null,could:null,them:null,see:null,other:null,than:null,then:null,now:null,look:null,only:null,come:null,its:null,over:null,think:null,also:null,back:null,after:null,use:null,two:null,how:null,our:null,work:null,first:null,well:null,way:null,even:null,new:null,want:null,because:null };
+var common = { through:null,since:null,such:null,much:null,was:null,is:null,are:null,has:null,the:null,be:null,to:null,of:null,and:null,a:null,in:null,that:null,have:null,I:null,it:null,for:null,not:null,on:null,with:null,he:null,as:null,you:null,do:null,at:null,Word:null,this:null,but:null,his:null,by:null,from:null,they:null,we:null,say:null,her:null,she:null,or:null,an:null,will:null,my:null,one:null,all:null,would:null,there:null,their:null,what:null,so:null,up:null,out:null,if:null,about:null,who:null,get:null,which:null,go:null,me:null,when:null,make:null,can:null,like:null,time:null,no:null,just:null,him:null,know:null,take:null,people:null,into:null,year:null,your:null,good:null,some:null,could:null,them:null,see:null,other:null,than:null,then:null,now:null,look:null,only:null,come:null,its:null,over:null,think:null,also:null,back:null,after:null,use:null,two:null,how:null,our:null,work:null,first:null,well:null,way:null,even:null,new:null,want:null,because:null };
 var FeedParser = require('feedparser');
 var request = require('request');
 var Promise = require('bluebird');
 var Sanitizer = require('sanitizer');
-var cheerio = require('cheerio');
 
 
 var rssReader = function(url) {
@@ -81,11 +80,11 @@ var wordTableMaker = function(doc) {
     var words = doc.content.split(" ");
     for (var j = 0; j < words.length; j++) {
       word = words[j];
-      words[j] = word.replace(/[\n\t]/g, '');
+      words[j] = word.replace(/[\n\t]/g, '').toLowerCase();
     }
     // console.log(words);
     for (var i = 0; i < words.length; i++) {
-      if (!common[words[i]] && words[i] !== '') {
+      if (common[words[i]] !== null && words[i] !== '' && words[i].length > 2) {
         if (result.wordtable[words[i]] === undefined) {
           result.wordtable[words[i]] = 0;
         }
@@ -97,9 +96,10 @@ var wordTableMaker = function(doc) {
   });
 };
 
-rssReader("https://news.ycombinator.com/rss").then(function(rss){console.log(rss);});
+rssReader("https://news.ycombinator.com/rss");
+// .then(function(rss){console.log(rss);});
 
-readableQuery("http://www.forbes.com/sites/alexknapp/2014/04/20/spacex-dragon-successfully-docked-with-the-space-station/")
+readableQuery("http://www.forbes.com/sites/jamesconca/2014/04/20/its-final-corn-ethanol-is-of-no-use/?fb_action_ids=277355565775300&fb_action_types=news.publishes/")
 .then(function(doc) {
   return wordTableMaker(doc);
 })
