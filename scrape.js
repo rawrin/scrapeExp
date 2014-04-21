@@ -6,29 +6,31 @@ var Sanitizer = require('sanitizer');
 var cheerio = require('cheerio');
 var CronJob = require('cron').CronJob;
 
-var req = request('https://news.ycombinator.com/rss');
-// var feedparser = new FeedParser();
-
-// req.on('error', function (error) {
-//   // handle any request errors
-// });
-// req.on('response', function (res) {
-//   var stream = this;
-
-//   if (res.statusCode != 200) return this.emit('error', new Error('Bad status code'));
-
-//   stream.pipe(feedparser);
-// });
 
 masterRssList = [];
+var rssURL = "https://news.ycombinator.com/rss";
 
-var readabilityRequestCron = function (time) {
-  var time = time || '00 1 * * * *';
+var readabilityRequestCron = function (time, master) {
+  master = master || masterRssList;
+  var time = time || '*/30 * * * * *';
   new CronJob(time, function(){
-  console.log('You will see this message every minute');
+  console.log('You will see this message every 30 sec');
+
+  // populates rss master list upon successful rss read
+  rssReader(rssURL).then(function(rssResults){
+    console.log('new rss files: ', rssResults);
+    for (var i = 0; i < rssResults.length; i++) {
+      masterRssList.push(rssResults[i]);
+    }
+    console.log('current rss list: ', masterRssList);
+  }).catch(function(err){
+    console.log('errored: ', err);
+  });
   
+  // calls readability function once a minute
   if (masterRssList.length > 0) {
-    var doc = masterRssList.pop();
+    var doc = masterRssList[masterRssList.length-1];
+    var ('\n readability doc: \n', doc.title, ' ', doc.url);
     readableQuery(doc.url)
     .then(function () {
       masterRssList.pop();
@@ -41,20 +43,36 @@ var readabilityRequestCron = function (time) {
   }, null, true, "America/Los_Angeles");
 };
 
+var rssReader = function(url) {
+  return new Promise(function(resolve, reject){
+    var req = request(url);
+    var rssResult = [];
+    var feedparser = new FeedParser();
+    req.on('error', function (error) {
+      reject(error);
+    });
+    req.on('response', function (res) {
+      var stream = this;
+      if (res.statusCode != 200) return this.emit('error', new Error('Bad status code'));
+      stream.pipe(feedparser);
+    });
 
-// feedparser.on('error', function(error) {
-//   // always handle errors
-// });
-// feedparser.on('readable', function() {
-//   // This is where the action is!
-//   var stream = this;
-//   var meta = this.meta; // **NOTE** the "meta" is always available in the context of the feedparser instance
-//   var item;
+    feedparser.on('error', function(error) {
+      reject(error);
+    });
+    feedparser.on('readable', function() {
+      var stream = this;
+      var meta = this.meta;
+      var item;
 
-//   while (item = stream.read()) {
-//     console.log(item);
-//   }
-// });
+      while (item = stream.read()) {
+        rssResult.push(item);
+      }
+      resolve(rssResult);
+    });
+  });
+};
+
 var readableQuery = function(url) {
   var doc = {};
   var apiKey = process.env.API || '9695482fe1197a0ba40b18c71190d2669b7d903a';
@@ -111,15 +129,14 @@ var wordTableMaker = function(doc) {
         result.wordtable[words[i]] += 1;
       }
     }
+    result.wordunique = Object.keys(result.wordtable).length;
     resolve(result);
   });
 };
 
-var wordCountMaker = function(doc) {
-  return new Promise(function(resolve, reject) {
+readabilityRequestCron();
 
-  });
-};
+// rssReader("https://news.ycombinator.com/rss").then(function(rss){console.log(rss);});
 
 // readableQuery("http://www.forbes.com/sites/alexknapp/2014/04/20/spacex-dragon-successfully-docked-with-the-space-station/")
 // .then(function(doc) {
