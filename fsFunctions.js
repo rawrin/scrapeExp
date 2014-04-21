@@ -19,6 +19,30 @@ var saveAsJson = function (item, dir) {
 
   return fs.writeFileAsync(path.join(dir, item.file + '.json'), JSON.stringify(item));
 };
+/***
+ *      ______                            _   
+ *     |  ____|                          | |  
+ *     | |__   __  __ _ __    ___   _ __ | |_ 
+ *     |  __|  \ \/ /| '_ \  / _ \ | '__|| __|
+ *     | |____  >  < | |_) || (_) || |   | |_ 
+ *     |______|/_/\_\| .__/  \___/ |_|    \__|
+ *                   | |                      
+ *                   |_|                      
+ */
+
+module.exports.saveAsJson = saveAsJson;
+
+
+/***
+ *      _______          _        
+ *     |__   __|        | |       
+ *        | |  ___  ___ | |_  ___ 
+ *        | | / _ \/ __|| __|/ __|
+ *        | ||  __/\__ \| |_ \__ \
+ *        |_| \___||___/ \__||___/
+ *                                
+ *                                
+ */
 
 var executeTest = function () {
   t1 = {title: "hello", link: 'www.greg.com', wordunique: 3, wordtable: {'i' : 1, 'like': 1, 'dogs': 1}};
@@ -28,4 +52,4 @@ var executeTest = function () {
   saveAsJson(t2);
 };
 
-executeTest();
+// executeTest();

@@ -5,9 +5,8 @@
   If readability is sucessful
     - update mongo
       if successful
-        update mongo master
+        create wordtable and save as .json
         remove from queue
-        update queue master?
 
   Add to scrape queue IF
     not in scrapeQueue AND not in mongoMaster
@@ -23,6 +22,7 @@ var cheerio = require('cheerio');
 var CronJob = require('cron').CronJob;
 
 var rssQ = require('./rssQueue.js');
+var myFs = require('./fsFunctions.js');
 
 var rssURL = "https://news.ycombinator.com/rss";
 
@@ -47,10 +47,21 @@ var readabilityRequestCron = function (time, master) {
   new CronJob(time, function(){
   console.log('You will see this message every 15 sec');
 
-  // populates the master rss queue which is independent of querying readability
+  // populates the master rss queue which is independent of querying readability,
+  /*  
+    Add to scrape queue IF
+     not in scrapeQueue AND not in mongoMaster
+  */
   populateMasterRssQueue(rssURL, 3);
 
-  // 
+  
+  /*
+    If queryReadability is sucessful
+    - updates mongo
+      if successful
+        creates wordtable and save as .json
+        removes from queue
+  */
   queryReadability();
 
   }, null, true, "America/Los_Angeles");
@@ -70,7 +81,7 @@ var populateMasterRssQueue = function (url, limit) {
 
     // check each item from the rss result and add to the queue IF
     //   1. it's not contained in scrapeQueue
-    //   2. it's not in the mongoDB TODO (add inside the if statement)
+    //   2. it's not in the mongoDB TODO (add add inside mongoDBQuery)
     for (var i = 0; i < len; i++) {
       var rssObj = rssResults[i];
       if (isRssDocValid(rssObj) && !scrapeQueue.contains(rssObj)) {
@@ -94,10 +105,9 @@ var populateMasterRssQueue = function (url, limit) {
 TODO PLAN
   IF queryReadability is successful
     - Update mongoDB
-    - IF mongoDB update is successful
-      0. create a wordTable and save as .json
-      1. update mongoMaster
-      2. remove from Queue
+      IF mongoDB update is successful
+        0. create a wordTable and save as .json
+        1. remove from Queue
 */
 
 var queryReadability = function (doc) {
@@ -110,11 +120,24 @@ var queryReadability = function (doc) {
       .then(function (doc) {
         console.log('readableQuery worked: ', doc.title);
 
+        // save
+
+        // TODO everything below should be INSIDE the mongoDB save above
         wordTableMaker(doc)
         .then(function (wordtable) {
           console.log('wordtable made: ', wordtable.title);
-          var d = scrapeQueue.dequeue();
-          console.log('dequeued      : ', d.title);
+
+          myFs.saveAsJson(wordtable)
+          .then(function(item){
+            console.log('save successful');
+            var d = scrapeQueue.dequeue();
+            console.log('dequeued      : ', d.title);
+          })
+          .catch(function (err) {
+            console.log('save as json did not work: ', err);
+          });
+
+
 
         })
         .catch(function (err) {
@@ -125,24 +148,7 @@ var queryReadability = function (doc) {
         console.log('cron rss query did not work');
       });
     }
-
   }
-
-
-  // if (master.length > 0) {
-  //   var doc = master[master.length-1];
-
-  //   console.log('\n readability doc: \n', doc.title, ' ', doc.link);
-
-  //   readableQuery(doc.link)
-  //   .then(function (doc) {
-  //     console.log('readableQuery worked: ', doc.title);
-  //     master.pop();
-  //   })
-  //   .catch(function(err){
-  //     console.log('cron rss query did not work');
-  //   });
-  // }
 };
 
 /***
