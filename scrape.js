@@ -8,7 +8,7 @@ var cheerio = require('cheerio');
 
 var rssReader = function(url) {
   return new Promise(function(resolve, reject){
-    var req = request();
+    var req = request(url);
     var rssResult = [];
     var feedparser = new FeedParser();
     req.on('error', function (error) {
